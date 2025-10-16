@@ -7,7 +7,9 @@ export async function getConnection() {
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
+    ssl: {
+      rejectUnauthorized: false, // penting untuk Railway
+    },
   });
   return connection;
 }
-
