@@ -1,0 +1,14 @@
+{
+  "name": "my-vercel-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.0",
+    "dotenv": "^16.4.0",
+    "jsonwebtoken": "^9.0.0",
+    "mysql2": "^3.6.0"
+  }
+}
