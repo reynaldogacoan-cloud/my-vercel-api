@@ -5,13 +5,27 @@ import jwt from 'jsonwebtoken';
 const SECRET_KEY = process.env.JWT_SECRET || 'mysecret';
 
 export default async function handler(req, res) {
-  // 🧩 Izinkan FlutterFlow akses
+  // ===== CORS =====
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  let body = {};
+  if (req.method === 'POST') {
+    try {
+      // Parsing JSON body di Vercel
+      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    } catch (e) {
+      console.error('Body parse error:', e);
+      return res.status(400).json({ success: false, error: 'Invalid JSON' });
+    }
+  }
+
   const { action } = req.query;
+  console.log('ACTION:', action);
+  console.log('BODY:', body);
+
   let conn;
 
   try {
@@ -19,7 +33,7 @@ export default async function handler(req, res) {
 
     // ===== REGISTER =====
     if (action === 'register') {
-      const { nama, email, password, jabatan } = req.body;
+      const { nama, email, password, jabatan } = body;
       if (!nama || !email || !password || !jabatan)
         return res.status(400).json({ success: false, error: 'Semua field wajib diisi.' });
 
@@ -39,7 +53,7 @@ export default async function handler(req, res) {
 
     // ===== LOGIN =====
     if (action === 'login') {
-      const { email, password } = req.body;
+      const { email, password } = body;
       if (!email || !password)
         return res.status(400).json({ success: false, error: 'Email dan password wajib diisi.' });
 
@@ -66,7 +80,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ===== READ DATA (TABEL BEBAS) =====
+    // ===== READ DATA =====
     if (action === 'read') {
       const { table } = req.query;
       if (!table)
@@ -80,15 +94,15 @@ export default async function handler(req, res) {
 
     // ===== INSERT DATA =====
     if (action === 'insert') {
-      const { table, data } = req.body;
+      const { table, data } = body;
       if (!table || !data)
         return res.status(400).json({ success: false, error: 'Parameter table dan data wajib diisi.' });
 
       const fields = Object.keys(data);
       const values = Object.values(data);
-      const placeholders = fields.map(() => '?').join(', ');
+      const placeholders = fields.map(() => '?').join(',');
 
-      const sql = `INSERT INTO ?? (${fields.join(', ')}) VALUES (${placeholders})`;
+      const sql = `INSERT INTO ?? (${fields.join(',')}) VALUES (${placeholders})`;
       const [result] = await conn.query(sql, [table, ...values]);
 
       return res.status(201).json({
@@ -100,15 +114,15 @@ export default async function handler(req, res) {
 
     // ===== UPDATE DATA =====
     if (action === 'update') {
-      const { table, id, data } = req.body;
+      const { table, id, data } = body;
       if (!table || !id || !data)
         return res.status(400).json({ success: false, error: 'Parameter table, id, dan data wajib diisi.' });
 
       const fields = Object.keys(data);
       const values = Object.values(data);
-      const setClause = fields.map(f => `${f}=?`).join(', ');
+      const setClause = fields.map(f => `${f}=?`).join(',');
 
-      const sql = `UPDATE ?? SET ${setClause} WHERE id = ?`;
+      const sql = `UPDATE ?? SET ${setClause} WHERE id=?`;
       await conn.query(sql, [table, ...values, id]);
 
       return res.status(200).json({ success: true, message: 'Data berhasil diupdate.' });
