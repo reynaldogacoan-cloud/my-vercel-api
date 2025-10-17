@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const conn = await getConnection();
 
     // cek apakah email sudah terdaftar
-    const [existing] = await conn.query("SELECT id FROM profile WHERE email = ?", [email]);
+    const [existing] = await conn.query("SELECT id FROM profiles WHERE email = ?", [email]);
     if (existing.length > 0) {
       await conn.end();
       return res.status(400).json({ error: "Email sudah terdaftar" });
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
 
     // simpan ke database
     await conn.query(
-      "INSERT INTO profile (nama, email, password, jabatan) VALUES (?, ?, ?, ?)",
+      "INSERT INTO profiles (nama, email, password, jabatan) VALUES (?, ?, ?, ?)",
       [nama, email, hashedPassword, jabatan]
     );
 
@@ -45,3 +45,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: "Server error", detail: err.message });
   }
 }
+
