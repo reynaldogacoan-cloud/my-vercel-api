@@ -5,17 +5,28 @@ import jwt from 'jsonwebtoken';
 const SECRET_KEY = process.env.JWT_SECRET || 'mysecret';
 
 export default async function handler(req, res) {
+  // 🧩 Izinkan FlutterFlow akses
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
   const { action } = req.query;
   let conn;
 
   try {
     conn = await getConnection();
 
-    // ========== REGISTER ==========
+    // ===== REGISTER =====
     if (action === 'register') {
       const { nama, email, password, jabatan } = req.body;
       if (!nama || !email || !password || !jabatan)
         return res.status(400).json({ success: false, error: 'Semua field wajib diisi.' });
+
+      // cek duplikat email
+      const [exist] = await conn.query('SELECT id FROM profile WHERE email = ?', [email]);
+      if (exist.length > 0)
+        return res.status(400).json({ success: false, error: 'Email sudah terdaftar.' });
 
       const hashed = await bcrypt.hash(password, 10);
       await conn.query(
@@ -23,10 +34,10 @@ export default async function handler(req, res) {
         [nama, email, hashed, jabatan]
       );
 
-      return res.status(200).json({ success: true, message: 'User berhasil terdaftar.' });
+      return res.status(201).json({ success: true, message: 'User berhasil terdaftar.' });
     }
 
-    // ========== LOGIN ==========
+    // ===== LOGIN =====
     if (action === 'login') {
       const { email, password } = req.body;
       if (!email || !password)
@@ -55,7 +66,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // ========== READ DATA (TABEL BEBAS, INCLUDE HEADER) ==========
+    // ===== READ DATA (TABEL BEBAS) =====
     if (action === 'read') {
       const { table } = req.query;
       if (!table)
@@ -63,10 +74,11 @@ export default async function handler(req, res) {
 
       const [rows, fields] = await conn.query(`SELECT * FROM ??`, [table]);
       const columns = fields.map(f => f.name);
+
       return res.status(200).json({ success: true, columns, data: rows });
     }
 
-    // ========== INSERT DATA ==========
+    // ===== INSERT DATA =====
     if (action === 'insert') {
       const { table, data } = req.body;
       if (!table || !data)
@@ -76,17 +88,17 @@ export default async function handler(req, res) {
       const values = Object.values(data);
       const placeholders = fields.map(() => '?').join(', ');
 
-      const query = `INSERT INTO ?? (${fields.join(', ')}) VALUES (${placeholders})`;
-      const [result] = await conn.query(query, [table, ...values]);
+      const sql = `INSERT INTO ?? (${fields.join(', ')}) VALUES (${placeholders})`;
+      const [result] = await conn.query(sql, [table, ...values]);
 
-      return res.status(200).json({
+      return res.status(201).json({
         success: true,
         message: 'Data berhasil ditambahkan.',
         insertId: result.insertId,
       });
     }
 
-    // ========== UPDATE DATA ==========
+    // ===== UPDATE DATA =====
     if (action === 'update') {
       const { table, id, data } = req.body;
       if (!table || !id || !data)
@@ -95,17 +107,19 @@ export default async function handler(req, res) {
       const fields = Object.keys(data);
       const values = Object.values(data);
       const setClause = fields.map(f => `${f}=?`).join(', ');
-      const query = `UPDATE ?? SET ${setClause} WHERE id = ?`;
 
-      await conn.query(query, [table, ...values, id]);
+      const sql = `UPDATE ?? SET ${setClause} WHERE id = ?`;
+      await conn.query(sql, [table, ...values, id]);
+
       return res.status(200).json({ success: true, message: 'Data berhasil diupdate.' });
     }
 
-    // ========== DEFAULT ==========
+    // ===== DEFAULT =====
     return res.status(400).json({ success: false, error: 'Action tidak dikenal.' });
+
   } catch (error) {
     console.error('API Error:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   } finally {
     if (conn) await conn.end();
   }
