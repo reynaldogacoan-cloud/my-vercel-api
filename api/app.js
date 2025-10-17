@@ -11,10 +11,10 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
+  // ===== Parsing body =====
   let body = {};
   if (req.method === 'POST') {
     try {
-      // Parsing JSON body di Vercel
       body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     } catch (e) {
       console.error('Body parse error:', e);
@@ -22,7 +22,18 @@ export default async function handler(req, res) {
     }
   }
 
-  const { action } = req.query;
+  // ===== Extract variables with safe defaults =====
+  const {
+    action = null,
+    table = null,
+    email = null,
+    password = null,
+    nama = null,
+    jabatan = null,
+    id = null,
+    data = null
+  } = body;
+
   console.log('ACTION:', action);
   console.log('BODY:', body);
 
@@ -33,7 +44,6 @@ export default async function handler(req, res) {
 
     // ===== REGISTER =====
     if (action === 'register') {
-      const { nama, email, password, jabatan } = body;
       if (!nama || !email || !password || !jabatan)
         return res.status(400).json({ success: false, error: 'Semua field wajib diisi.' });
 
@@ -53,7 +63,6 @@ export default async function handler(req, res) {
 
     // ===== LOGIN =====
     if (action === 'login') {
-      const { email, password } = body;
       if (!email || !password)
         return res.status(400).json({ success: false, error: 'Email dan password wajib diisi.' });
 
@@ -82,9 +91,7 @@ export default async function handler(req, res) {
 
     // ===== READ DATA =====
     if (action === 'read') {
-      const { table } = req.query;
-      if (!table)
-        return res.status(400).json({ success: false, error: 'Parameter table wajib diisi.' });
+      if (!table) return res.status(400).json({ success: false, error: 'Parameter table wajib diisi.' });
 
       const [rows, fields] = await conn.query(`SELECT * FROM ??`, [table]);
       const columns = fields.map(f => f.name);
@@ -94,8 +101,7 @@ export default async function handler(req, res) {
 
     // ===== INSERT DATA =====
     if (action === 'insert') {
-      const { table, data } = body;
-      if (!table || !data)
+      if (!table || !data || typeof data !== 'object') 
         return res.status(400).json({ success: false, error: 'Parameter table dan data wajib diisi.' });
 
       const fields = Object.keys(data);
@@ -114,8 +120,7 @@ export default async function handler(req, res) {
 
     // ===== UPDATE DATA =====
     if (action === 'update') {
-      const { table, id, data } = body;
-      if (!table || !id || !data)
+      if (!table || !id || !data || typeof data !== 'object')
         return res.status(400).json({ success: false, error: 'Parameter table, id, dan data wajib diisi.' });
 
       const fields = Object.keys(data);
