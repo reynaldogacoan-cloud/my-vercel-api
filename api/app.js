@@ -47,7 +47,6 @@ export default async function handler(req, res) {
       if (!nama || !email || !password || !jabatan)
         return res.status(400).json({ success: false, error: 'Semua field wajib diisi.' });
 
-      // cek duplikat email
       const [exist] = await conn.query('SELECT id FROM profile WHERE email = ?', [email]);
       if (exist.length > 0)
         return res.status(400).json({ success: false, error: 'Email sudah terdaftar.' });
