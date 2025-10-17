@@ -47,13 +47,13 @@ export default async function handler(req, res) {
       if (!nama || !email || !password || !jabatan)
         return res.status(400).json({ success: false, error: 'Semua field wajib diisi.' });
 
-      const [exist] = await conn.query('SELECT id FROM profile WHERE email = ?', [email]);
+      const [exist] = await conn.query('SELECT id FROM profiles WHERE email = ?', [email]);
       if (exist.length > 0)
         return res.status(400).json({ success: false, error: 'Email sudah terdaftar.' });
 
       const hashed = await bcrypt.hash(password, 10);
       await conn.query(
-        'INSERT INTO profile (nama, email, password, jabatan) VALUES (?, ?, ?, ?)',
+        'INSERT INTO profiles (nama, email, password, jabatan) VALUES (?, ?, ?, ?)',
         [nama, email, hashed, jabatan]
       );
 
@@ -65,7 +65,7 @@ export default async function handler(req, res) {
       if (!email || !password)
         return res.status(400).json({ success: false, error: 'Email dan password wajib diisi.' });
 
-      const [rows] = await conn.query('SELECT * FROM profile WHERE email = ?', [email]);
+      const [rows] = await conn.query('SELECT * FROM profiles WHERE email = ?', [email]);
       if (rows.length === 0)
         return res.status(401).json({ success: false, error: 'User tidak ditemukan.' });
 
